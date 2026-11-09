@@ -11,6 +11,88 @@ from idea2ip.main import create_app
 from idea2ip.models import QuestionDraft
 
 
+@pytest.mark.parametrize("variant", ["missing", "extra", "old_duplicate_array"])
+def test_invalid_analysis_shape_fails_closed(settings, context, variant):
+    from idea2ip.models import TargetField
+
+    empty = {"disposition": "not_provided", "source_ids": [], "quotes": []}
+    result = {target.value: empty.copy() for target in TargetField}
+    if variant == "missing":
+        del result["creative_intent"]
+    elif variant == "extra":
+        result["unknown_field"] = empty.copy()
+    else:
+        result = {"fields": [{"target_field": "human_edit", **empty} for _ in range(5)]}
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(result)}}]
+            },
+        )
+
+    settings = settings.model_copy(update={"mode": "live"})
+    engine = Engine(settings, LlamaClient(settings, httpx.MockTransport(handler)))
+    client = TestClient(create_app(settings, engine))
+    response = client.post(
+        f"/v1/projects/{context.project_id}/answers/analyze", json=context.model_dump(mode="json")
+    )
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "MODEL_INVALID_OUTPUT"
+
+
+@pytest.mark.parametrize("endpoint", ["answers/analyze", "brief", "contributions"])
+def test_analysis_uses_required_named_fields(settings, context, endpoint):
+    from idea2ip.models import EvidenceType, TargetField
+
+    def handler(request):
+        payload = json.loads(request.content)
+        schema = payload["response_format"]["json_schema"]["schema"]
+        names = {target.value for target in TargetField}
+        assert set(schema["properties"]) == names
+        assert set(schema["required"]) == names
+        assert schema["additionalProperties"] is False
+        result = {}
+        for target in TargetField:
+            sources = [
+                s
+                for s in context.sources
+                if s.kind == EvidenceType.USER_STATEMENT and s.target_field == target
+            ]
+            result[target.value] = {
+                "disposition": "provided" if sources else "not_provided",
+                "source_ids": [s.source_id for s in sources],
+                "quotes": [s.content for s in sources],
+            }
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(result)}}]
+            },
+        )
+
+    settings = settings.model_copy(update={"mode": "live"})
+    engine = Engine(settings, LlamaClient(settings, httpx.MockTransport(handler)))
+    client = TestClient(create_app(settings, engine))
+    response = client.post(
+        f"/v1/projects/{context.project_id}/{endpoint}", json=context.model_dump(mode="json")
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    if endpoint == "answers/analyze":
+        assert [field["target_field"] for field in result["fields"]] == [
+            t.value for t in TargetField
+        ]
+        assert result["fields"][3]["status"] == "MISSING"
+        assert result["fields"][4]["status"] == "MISSING"
+    elif endpoint == "brief":
+        assert len(result["sections"]) == 5
+        assert result["sections"]["human_contribution"]["source_ids"] == ["statement-edit"]
+    else:
+        assert result["contributions"][0]["source_ids"] == ["statement-edit"]
+
+
 def test_llama_chat_contract(settings):
     def handler(request):
         assert str(request.url) == "http://localhost:8081/v1/chat/completions"

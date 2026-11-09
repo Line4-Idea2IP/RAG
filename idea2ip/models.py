@@ -85,15 +85,35 @@ class QuestionResponse(QuestionDraft):
     snapshot_version: Id
 
 
-class FieldCandidate(StrictModel):
-    target_field: TargetField
+class FieldValue(StrictModel):
     disposition: Literal["provided", "unclear", "not_provided", "conflicted"]
     source_ids: list[Id] = Field(max_length=100)
     quotes: list[Text] = Field(max_length=100)
 
 
+class FieldCandidate(FieldValue):
+    target_field: TargetField
+
+
 class AnalysisDraft(StrictModel):
     fields: list[FieldCandidate] = Field(min_length=5, max_length=5)
+
+
+class NamedAnalysisDraft(StrictModel):
+    # Fixed required properties prevent enum repetition in a five-element array.
+    work_overview: FieldValue
+    ai_usage: FieldValue
+    human_edit: FieldValue
+    selection_arrangement: FieldValue
+    creative_intent: FieldValue
+
+    def to_draft(self) -> AnalysisDraft:
+        return AnalysisDraft(
+            fields=[
+                FieldCandidate(target_field=target, **getattr(self, target.value).model_dump())
+                for target in TargetField
+            ]
+        )
 
 
 class FieldAnalysis(FieldCandidate):

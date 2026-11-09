@@ -16,6 +16,7 @@ from .models import (
     FieldCandidate,
     ImageRequest,
     ImageResponse,
+    NamedAnalysisDraft,
     ObservationDraft,
     ProjectContext,
     QuestionDraft,
@@ -119,9 +120,13 @@ class Engine:
                 )
             draft = AnalysisDraft(fields=fields)
         else:
-            draft = self.llm.generate(
-                AnalysisDraft,
-                "5개 target_field를 정확히 한 번씩 분석한다. 사용자 진술만 분석한다. "
+            named = self.llm.generate(
+                NamedAnalysisDraft,
+                "사용자 진술만 분석한다. 다음 5개 이름을 가진 JSON 객체를 반환한다: "
+                "work_overview, ai_usage, human_edit, selection_arrangement, creative_intent. "
+                "각 객체는 disposition, source_ids, quotes만 가진다. fields 배열이나 "
+                "target_field 속성은 반환하지 않는다. 자료가 없는 항목도 반드시 포함하고 "
+                "disposition=not_provided, source_ids=[], quotes=[]로 반환한다. "
                 "provided는 해당 질문에 구체적으로 답한 경우, unclear는 모호/관련성 부족, "
                 "not_provided는 근거 없음, conflicted는 양립 불가능한 진술이 있는 경우다. "
                 "'직접 수정한 것이 없다'도 답변이지만 창작 기여를 했다는 뜻이 아니다. "
@@ -129,8 +134,12 @@ class Engine:
                 "quote는 content 전체 원문이어야 한다. "
                 "모든 사용된 진술을 인용하고 상충하는 진술을 버리지 않는다. "
                 "target_field가 명시된 진술은 다른 필드로 바꾸지 않는다.",
-                {"sources": [s.model_dump(mode="json") for s in statements]},
+                {
+                    "field_questions": {target.value: text for target, text in QUESTIONS.items()},
+                    "sources": [s.model_dump(mode="json") for s in statements],
+                },
             )
+            draft = named.to_draft()
         if {f.target_field for f in draft.fields} != set(TargetField):
             raise ServiceError("MODEL_FIELD_MISMATCH", "분석 필드 중복/누락")
         lookup = {s.source_id: s for s in statements}

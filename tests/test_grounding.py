@@ -6,6 +6,7 @@ from idea2ip.errors import ServiceError
 from idea2ip.models import (
     AnalysisDraft,
     EvidenceType,
+    NamedAnalysisDraft,
     ProjectContext,
     QuestionDraft,
     QuestionRequest,
@@ -16,7 +17,14 @@ class Stub:
     def __init__(self, result):
         self.result = result
 
-    def generate(self, *args, **kwargs):
+    def generate(self, schema, *args, **kwargs):
+        if schema is NamedAnalysisDraft and isinstance(self.result, AnalysisDraft):
+            return NamedAnalysisDraft.model_validate(
+                {
+                    f.target_field.value: f.model_dump(exclude={"target_field"})
+                    for f in self.result.fields
+                }
+            )
         return self.result
 
 
@@ -51,7 +59,6 @@ def test_valid_user_reported_contributions(settings, context):
         ("attachment", "INVALID_QUOTE"),
         ("snippet", "INVALID_QUOTE"),
         ("omit", "MODEL_EVIDENCE_OMITTED"),
-        ("duplicate_field", "MODEL_FIELD_MISMATCH"),
     ],
 )
 def test_reject_ungrounded_model_analysis(settings, context, mutation, code):
@@ -68,8 +75,6 @@ def test_reject_ungrounded_model_analysis(settings, context, mutation, code):
         field.quotes = ["직접 다시 그렸습니다."]
     elif mutation == "omit":
         field.disposition, field.source_ids, field.quotes = "not_provided", [], []
-    else:
-        draft.fields[0].target_field = draft.fields[1].target_field
     engine = Engine(settings.model_copy(update={"mode": "live"}), Stub(draft))
     with pytest.raises(ServiceError) as error:
         engine.analyze(context)
