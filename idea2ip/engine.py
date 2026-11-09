@@ -115,12 +115,26 @@ class Engine:
                 "불필요한 하위 질문을 나열하지 않는다. "
                 "사실을 전제하지 말고 해당 작업이 없는 경우도 허용하며 "
                 "'없다'고 답할 수 있음을 질문에 명시한다. "
-                "관련 내용이 이미 있으면 사용자 진술로 취급하고 부족한 내용에 초점을 맞춘다. "
+                "관련 USER_STATEMENT가 이미 있으면 부족한 내용에 초점을 맞춘다. "
                 "이미 답한 작업 유무를 다시 묻지 말고 구체적인 방법·기준 등 빠진 내용만 묻는다. "
                 "'제가 수정했다'는 답변에 작업 주체 확인만 반복하지 않는다. "
                 "불명확하거나 상충하는 진술은 확인할 수 있다. "
+                "USER_STATEMENT만 사용자 진술로 취급한다. IMAGE_OBSERVATION은 오류가 있을 수 "
+                "있는 모델 해석이며 사용자 진술이나 확인된 창작 사실이 아니다. "
                 "첨부·이미지 관찰은 확인 질문의 계기로만 사용하며 사용자의 작업 주체·의도·"
-                "직접 창작을 입증하는 근거로 바꾸지 않는다.",
+                "직접 창작을 입증하는 근거로 바꾸지 않는다. "
+                "관련 IMAGE_OBSERVATION에 활용할 수 있는 관찰 내용이 있으면 주요 시각 요소의 "
+                "색·형태·상대적 위치 중 target_field에 맞는 구체적인 요소를 질문의 계기로 삼는다. "
+                "human_edit는 보이는 요소 중 직접 수정·추가한 부분의 유무와 구체적인 작업을, "
+                "selection_arrangement는 요소의 선택·위치·크기·순서를 사용자가 직접 결정한 "
+                "작업의 유무와 과정·기준을 묻되 사용자가 배치했다고 전제하지 않는다. "
+                "creative_intent는 보이는 요소를 계기로 표현하려던 내용이나 분위기를 열린 "
+                "질문으로 묻고 이미지에서 특정 의도를 추정하거나 제시하지 않는다. "
+                "관찰의 limitations와 불확실성을 고려하고 관련성이 낮거나 불확실한 관찰은 "
+                "억지로 포함하지 않는다. 관찰이 없거나 비어 있거나 활용할 수 없으면 일반적인 "
+                "중립 질문을 허용한다. 관찰 내용을 실제로 활용한 질문의 source_ids에는 해당 "
+                "IMAGE_OBSERVATION의 source_id를 반환한다. parent_source_ids는 부모 첨부와의 "
+                "연결이며 관찰 출처를 대신하지 않는다. 일반 질문에는 출처를 강제로 붙이지 않는다.",
                 {
                     "target_field": request.target_field.value,
                     "default_question": QUESTIONS[request.target_field],
@@ -257,11 +271,27 @@ class Engine:
         else:
             draft = self.llm.generate(
                 ObservationDraft,
-                "첨부 이미지에서 직접 볼 수 있는 색, 형태, 배치만 기술한다. "
-                "직접 수정, 저자, AI 사용, 제작 순서를 추론하지 않는다.",
+                "첨부 이미지의 주요 시각 요소와 색·형태·상대적 위치를 observations에 "
+                "간결하게 기술한다. 각 설명이 어느 요소에 해당하는지 구분하고 한 요소의 "
+                "특징을 다른 요소에도 적용하지 않는다. 비슷한 관찰을 반복하지 않으며 "
+                "배열의 최대 개수는 상한일 뿐이므로 개수를 채우려고 내용을 만들어내지 않는다. "
+                "외형만으로 재질, 물체의 개폐 상태, 가려진 구조를 확정하지 않는다. "
+                "필요하면 '금속성으로 보이는', '명확히 확인하기 어렵다'처럼 불확실성을 표현한다. "
+                "limitations에는 흐림·가림·부분 노출·판독 불가 등 이 이미지에서 실제로 "
+                "확인하기 어려운 사항만 기술한다. '색·형태·배치만 기술함' 같은 정책 문구로 "
+                "채우지 말고 특별한 한계가 없으면 빈 목록을 반환한다. "
+                "저자, 제작 도구, AI 사용 여부, 제작 순서, 사용자의 직접 수정이나 창작 의도를 "
+                "이미지로 추론하지 않는다.",
                 {"attachment_source_id": request.attachment_source_id},
                 request.image_data_uri,
             )
+        # Exact duplicates only; never normalize or rewrite user statements.
+        draft = draft.model_copy(
+            update={
+                "observations": list(dict.fromkeys(draft.observations)),
+                "limitations": list(dict.fromkeys(draft.limitations)),
+            }
+        )
         digest = hashlib.sha256(request.image_data_uri.encode()).hexdigest()[:16]
         return ImageResponse(
             **draft.model_dump(),

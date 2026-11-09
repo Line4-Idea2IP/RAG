@@ -55,7 +55,7 @@ def test_question_chat_receives_target_guidance(settings, context, target, requi
             "불필요한 하위 질문",
             "해당 작업이 없는 경우도 허용",
             "'없다'고 답할 수 있음을 질문에 명시",
-            "이미 있으면 사용자 진술로 취급",
+            "관련 USER_STATEMENT가 이미 있으면 부족한 내용에 초점",
             "이미 답한 작업 유무를 다시 묻지 말고",
             "작업 주체 확인만 반복하지 않는다",
             "불명확하거나 상충하는 진술은 확인",
