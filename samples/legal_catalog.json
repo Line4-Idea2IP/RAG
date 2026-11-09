@@ -1,0 +1,18 @@
+[
+  {
+    "source_id": "legal-placeholder-kr-v0",
+    "kind": "OFFICIAL_GUIDE",
+    "title": "공식 저작권 법령/등록 안내서 자리표시자",
+    "publisher": "실제 공식 발행기관과 문서명을 입력하세요",
+    "jurisdiction": "KR",
+    "official_url": "https://www.copyright.or.kr/",
+    "edition": "UNVERIFIED-PLACEHOLDER",
+    "published_on": null,
+    "effective_from": null,
+    "effective_to": null,
+    "retrieved_on": null,
+    "reviewed": false,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "content": "실제 법률 내용이 아닙니다. 검토된 공식 문서의 텍스트와 판본 정보를 채우세요."
+  }
+]

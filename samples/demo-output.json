@@ -1,0 +1,223 @@
+{
+  "questions": {
+    "target_field": "human_edit",
+    "question": "AI 산출물에서 직접 수정하거나 추가한 부분이 있나요? 있다면 구체적인 요소와 작업 방법을, 없다면 없다고 알려주세요.",
+    "source_ids": [],
+    "mode": "mock",
+    "project_id": "project-moon-garden",
+    "snapshot_version": "v1"
+  },
+  "answers/analyze": {
+    "project_id": "project-moon-garden",
+    "snapshot_version": "v1",
+    "mode": "mock",
+    "fields": [
+      {
+        "target_field": "work_overview",
+        "disposition": "unclear",
+        "source_ids": [
+          "statement-overview"
+        ],
+        "quotes": [
+          "달빛 아래 정원을 돌보는 캐릭터 일러스트를 만들었습니다."
+        ],
+        "status": "UNCLEAR",
+        "evidence_type": "USER_STATEMENT"
+      },
+      {
+        "target_field": "ai_usage",
+        "disposition": "unclear",
+        "source_ids": [
+          "statement-ai"
+        ],
+        "quotes": [
+          "Midjourney로 캐릭터 시안을 생성했습니다."
+        ],
+        "status": "UNCLEAR",
+        "evidence_type": "USER_STATEMENT"
+      },
+      {
+        "target_field": "human_edit",
+        "disposition": "unclear",
+        "source_ids": [
+          "statement-edit"
+        ],
+        "quotes": [
+          "제가 편집 프로그램에서 캐릭터 눈의 모양을 직접 다시 그렸습니다."
+        ],
+        "status": "UNCLEAR",
+        "evidence_type": "USER_STATEMENT"
+      },
+      {
+        "target_field": "selection_arrangement",
+        "disposition": "not_provided",
+        "source_ids": [],
+        "quotes": [],
+        "status": "MISSING",
+        "evidence_type": "UNVERIFIED"
+      },
+      {
+        "target_field": "creative_intent",
+        "disposition": "not_provided",
+        "source_ids": [],
+        "quotes": [],
+        "status": "MISSING",
+        "evidence_type": "UNVERIFIED"
+      }
+    ]
+  },
+  "contributions": {
+    "project_id": "project-moon-garden",
+    "snapshot_version": "v1",
+    "mode": "mock",
+    "contributions": [],
+    "unresolved_fields": [
+      "work_overview",
+      "ai_usage",
+      "human_edit",
+      "selection_arrangement",
+      "creative_intent"
+    ]
+  },
+  "brief": {
+    "schema_version": "1.0",
+    "project_id": "project-moon-garden",
+    "snapshot_version": "v1",
+    "mode": "mock",
+    "status": "DRAFT",
+    "sections": {
+      "work_overview": {
+        "title": "1. 작품 개요",
+        "status": "INCOMPLETE",
+        "statements": [
+          "[UNCLEAR] 사용자 진술: 달빛 아래 정원을 돌보는 캐릭터 일러스트를 만들었습니다."
+        ],
+        "source_ids": [
+          "statement-overview"
+        ]
+      },
+      "ai_usage": {
+        "title": "2. AI 활용 내역",
+        "status": "INCOMPLETE",
+        "statements": [
+          "[UNCLEAR] 사용자 진술: Midjourney로 캐릭터 시안을 생성했습니다."
+        ],
+        "source_ids": [
+          "statement-ai"
+        ]
+      },
+      "human_contribution": {
+        "title": "3. 인간의 창작 기여에 관한 진술",
+        "status": "INCOMPLETE",
+        "statements": [
+          "[UNCLEAR] 사용자 진술: 제가 편집 프로그램에서 캐릭터 눈의 모양을 직접 다시 그렸습니다."
+        ],
+        "source_ids": [
+          "statement-edit"
+        ]
+      },
+      "evidence_summary": {
+        "title": "4. 제출 근거 목록",
+        "status": "AVAILABLE",
+        "statements": [
+          "[USER_STATEMENT] 작품 설명에 대한 사용자 답변",
+          "[USER_STATEMENT] AI 활용에 대한 사용자 답변",
+          "[USER_STATEMENT] 직접 수정에 대한 사용자 답변",
+          "[ATTACHED_FILE] 제작 메모.txt",
+          "[ATTACHED_FILE] sketch.png",
+          "[UNVERIFIED] 확인이 필요한 메모"
+        ],
+        "source_ids": [
+          "statement-overview",
+          "statement-ai",
+          "statement-edit",
+          "attachment-notes",
+          "attachment-sketch",
+          "unknown-author"
+        ]
+      },
+      "gaps_and_guidance": {
+        "title": "5. 보완 질문 및 공식 지침",
+        "status": "INCOMPLETE",
+        "statements": [
+          "작품의 종류와 표현하려는 내용을 설명해 주시겠어요?",
+          "AI 도구를 사용했다면 도구 이름과 사용한 작업 단계를 알려주시겠어요?",
+          "AI 산출물에서 직접 수정하거나 추가한 부분이 있나요? 있다면 구체적인 요소와 작업 방법을, 없다면 없다고 알려주세요.",
+          "여러 요소를 직접 선택하거나 배치한 작업이 있나요? 있다면 선택 기준과 과정을 알려주세요.",
+          "직접 표현하려던 의도와 그 의도를 작품에 반영한 과정을 알려주시겠어요?",
+          "검토된 공식 법률자료/신청 지침 판본이 연결되지 않았습니다."
+        ],
+        "source_ids": []
+      }
+    },
+    "sources": [
+      {
+        "source_id": "statement-overview",
+        "project_id": "project-moon-garden",
+        "kind": "USER_STATEMENT",
+        "title": "작품 설명에 대한 사용자 답변",
+        "content": "달빛 아래 정원을 돌보는 캐릭터 일러스트를 만들었습니다.",
+        "target_field": "work_overview",
+        "parent_source_ids": [],
+        "locator": null
+      },
+      {
+        "source_id": "statement-ai",
+        "project_id": "project-moon-garden",
+        "kind": "USER_STATEMENT",
+        "title": "AI 활용에 대한 사용자 답변",
+        "content": "Midjourney로 캐릭터 시안을 생성했습니다.",
+        "target_field": "ai_usage",
+        "parent_source_ids": [],
+        "locator": null
+      },
+      {
+        "source_id": "statement-edit",
+        "project_id": "project-moon-garden",
+        "kind": "USER_STATEMENT",
+        "title": "직접 수정에 대한 사용자 답변",
+        "content": "제가 편집 프로그램에서 캐릭터 눈의 모양을 직접 다시 그렸습니다.",
+        "target_field": "human_edit",
+        "parent_source_ids": [],
+        "locator": null
+      },
+      {
+        "source_id": "attachment-notes",
+        "project_id": "project-moon-garden",
+        "kind": "ATTACHED_FILE",
+        "title": "제작 메모.txt",
+        "content": "작업 메모: 눈 형태 수정 버전 저장.",
+        "target_field": null,
+        "parent_source_ids": [],
+        "locator": "file-001:line-1"
+      },
+      {
+        "source_id": "attachment-sketch",
+        "project_id": "project-moon-garden",
+        "kind": "ATTACHED_FILE",
+        "title": "sketch.png",
+        "content": "샘플 이미지 파일 메타데이터입니다. 이미지 픽셀이나 분석 결과가 아닙니다.",
+        "target_field": null,
+        "parent_source_ids": [],
+        "locator": "file-002"
+      },
+      {
+        "source_id": "unknown-author",
+        "project_id": "project-moon-garden",
+        "kind": "UNVERIFIED",
+        "title": "확인이 필요한 메모",
+        "content": "첨부 기록만으로 실제 수정 주체를 확인할 수 없습니다.",
+        "target_field": null,
+        "parent_source_ids": [],
+        "locator": null
+      }
+    ],
+    "legal_editions": [],
+    "notices": [
+      "창작 기여 항목은 사용자 진술의 분류이며 사실 인증이나 기여 점수가 아닙니다.",
+      "이미지 관찰과 첨부 파일만으로 직접 창작 또는 저작자를 확정하지 않습니다.",
+      "이 초안은 저작권 성립, 법적 판단 또는 등록 가능성을 보장하지 않습니다.",
+      "테스트 모드: 답변 의미 분석을 수행하지 않았습니다."
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "idea2ip-ai"
+version = "0.1.0"
+description = "Evidence-aware interview and Copyright Brief service"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1", "pydantic>=2.10,<3", "pydantic-settings>=2.6,<3",
+  "httpx>=0.28,<1", "uvicorn>=0.30,<1",
+]
+
+[project.optional-dependencies]
+vector = ["psycopg[binary]>=3.2,<4", "sentence-transformers>=3.3,<6"]
+test = ["pytest>=8.3,<10", "ruff>=0.8,<1", "build>=1,<2"]
+
+[tool.setuptools.packages.find]
+include = ["idea2ip*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["build", "dist", "*.egg-info"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

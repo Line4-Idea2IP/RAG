@@ -1,0 +1,54 @@
+{
+  "project_id": "project-moon-garden",
+  "title": "달빛 정원 캐릭터",
+  "snapshot_version": "v1",
+  "sources": [
+    {
+      "source_id": "statement-overview",
+      "project_id": "project-moon-garden",
+      "kind": "USER_STATEMENT",
+      "title": "작품 설명에 대한 사용자 답변",
+      "content": "달빛 아래 정원을 돌보는 캐릭터 일러스트를 만들었습니다.",
+      "target_field": "work_overview"
+    },
+    {
+      "source_id": "statement-ai",
+      "project_id": "project-moon-garden",
+      "kind": "USER_STATEMENT",
+      "title": "AI 활용에 대한 사용자 답변",
+      "content": "Midjourney로 캐릭터 시안을 생성했습니다.",
+      "target_field": "ai_usage"
+    },
+    {
+      "source_id": "statement-edit",
+      "project_id": "project-moon-garden",
+      "kind": "USER_STATEMENT",
+      "title": "직접 수정에 대한 사용자 답변",
+      "content": "제가 편집 프로그램에서 캐릭터 눈의 모양을 직접 다시 그렸습니다.",
+      "target_field": "human_edit"
+    },
+    {
+      "source_id": "attachment-notes",
+      "project_id": "project-moon-garden",
+      "kind": "ATTACHED_FILE",
+      "title": "제작 메모.txt",
+      "content": "작업 메모: 눈 형태 수정 버전 저장.",
+      "locator": "file-001:line-1"
+    },
+    {
+      "source_id": "attachment-sketch",
+      "project_id": "project-moon-garden",
+      "kind": "ATTACHED_FILE",
+      "title": "sketch.png",
+      "content": "샘플 이미지 파일 메타데이터입니다. 이미지 픽셀이나 분석 결과가 아닙니다.",
+      "locator": "file-002"
+    },
+    {
+      "source_id": "unknown-author",
+      "project_id": "project-moon-garden",
+      "kind": "UNVERIFIED",
+      "title": "확인이 필요한 메모",
+      "content": "첨부 기록만으로 실제 수정 주체를 확인할 수 없습니다."
+    }
+  ]
+}
