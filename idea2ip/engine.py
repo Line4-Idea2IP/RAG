@@ -29,16 +29,41 @@ from .retrieval import search
 
 QUESTIONS = {
     TargetField.WORK_OVERVIEW: "작품의 종류와 표현하려는 내용을 설명해 주시겠어요?",
-    TargetField.AI_USAGE: "AI 도구를 사용했다면 도구 이름과 사용한 작업 단계를 알려주시겠어요?",
+    TargetField.AI_USAGE: (
+        "AI 도구를 사용한 작업이 있나요? 있다면 도구 이름과 활용 단계를, 없다면 없다고 알려주세요."
+    ),
     TargetField.HUMAN_EDIT: (
-        "AI 산출물에서 직접 수정하거나 추가한 부분이 있나요? "
+        "작품에서 직접 수정하거나 추가한 부분이 있나요? "
         "있다면 구체적인 요소와 작업 방법을, 없다면 없다고 알려주세요."
     ),
     TargetField.SELECTION_ARRANGEMENT: (
-        "여러 요소를 직접 선택하거나 배치한 작업이 있나요? 있다면 선택 기준과 과정을 알려주세요."
+        "여러 시안이나 요소 중 직접 선택하거나 배치한 작업이 있나요? "
+        "있다면 그 과정과 기준을, 없다면 없다고 알려주세요."
     ),
     TargetField.CREATIVE_INTENT: (
-        "직접 표현하려던 의도와 그 의도를 작품에 반영한 과정을 알려주시겠어요?"
+        "표현하려던 의도가 있나요? 있다면 그 의도와 이를 반영한 결정이나 과정을, "
+        "없다면 없다고 알려주세요."
+    ),
+}
+
+QUESTION_GUIDANCE = {
+    TargetField.WORK_OVERVIEW: "작품 종류와 표현 내용을 묻는다.",
+    TargetField.AI_USAGE: "사용한 AI 도구와 활용 단계를 묻는다. 사용을 전제하지 않는다.",
+    TargetField.HUMAN_EDIT: (
+        "사용자가 직접 수정하거나 추가한 구체적인 요소와 방법을 묻는다. "
+        "후보 선택·배치나 프롬프트·도구 설정을 대신 묻지 않는다."
+    ),
+    TargetField.SELECTION_ARRANGEMENT: (
+        "후보·요소 선택, 구성, 위치·크기·순서 결정 중 관련된 작업과 그 기준을 묻는다. "
+        "직접 다시 그렸다는 진술만으로 선택·배치도 했다고 전제하지 않는다. "
+        "직접 수정 과정에 한정하지 말고 별개의 선택·구성 작업 유무를 묻는다. "
+        "직접 수정 작업이나 도구 설정을 반복해서 묻지 않는다. "
+        "특정 편집 프로그램 사용을 가정하지 않으며 AI 도구 안에서 후보를 "
+        "선택·구성한 경우도 포함한다."
+    ),
+    TargetField.CREATIVE_INTENT: (
+        "표현하려던 의도와 이를 반영한 결정·과정을 묻는다. "
+        "수정 방법이나 도구 설정만 묻는 질문으로 바꾸지 않는다."
     ),
 }
 
@@ -85,11 +110,21 @@ class Engine:
         else:
             draft = self.llm.generate(
                 QuestionDraft,
-                "target_field만 확인하는 중립적 한국어 질문 하나를 작성한다. "
-                "사실을 전제하지 말고 해당 작업이 없는 경우도 허용한다. "
-                "human_edit은 직접 수정/추가만 묻고 프롬프트나 도구 설정은 묻지 않는다.",
+                "target_field에 대해 question_guidance에 따라 default_question을 참고하여 "
+                "중립적인 한국어 질문 하나를 작성한다. 기존 스키마의 길이 제한을 지키고 "
+                "불필요한 하위 질문을 나열하지 않는다. "
+                "사실을 전제하지 말고 해당 작업이 없는 경우도 허용하며 "
+                "'없다'고 답할 수 있음을 질문에 명시한다. "
+                "관련 내용이 이미 있으면 사용자 진술로 취급하고 부족한 내용에 초점을 맞춘다. "
+                "이미 답한 작업 유무를 다시 묻지 말고 구체적인 방법·기준 등 빠진 내용만 묻는다. "
+                "'제가 수정했다'는 답변에 작업 주체 확인만 반복하지 않는다. "
+                "불명확하거나 상충하는 진술은 확인할 수 있다. "
+                "첨부·이미지 관찰은 확인 질문의 계기로만 사용하며 사용자의 작업 주체·의도·"
+                "직접 창작을 입증하는 근거로 바꾸지 않는다.",
                 {
                     "target_field": request.target_field.value,
+                    "default_question": QUESTIONS[request.target_field],
+                    "question_guidance": QUESTION_GUIDANCE[request.target_field],
                     "context": context.model_dump(mode="json"),
                 },
             )

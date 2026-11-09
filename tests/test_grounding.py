@@ -94,6 +94,20 @@ def test_question_rejects_forged_source(settings, context):
         engine.question(QuestionRequest(context=context, target_field="human_edit"))
 
 
+def test_question_rejects_model_target_mismatch(settings, context):
+    engine = Engine(
+        settings.model_copy(update={"mode": "live"}),
+        Stub(
+            QuestionDraft(
+                target_field="human_edit", question="수정한 부분이 있나요?", source_ids=[]
+            )
+        ),
+    )
+    with pytest.raises(ServiceError) as error:
+        engine.question(QuestionRequest(context=context, target_field="selection_arrangement"))
+    assert error.value.code == "MODEL_FIELD_MISMATCH"
+
+
 def test_image_and_guide_cannot_become_human_contribution(settings, context):
     reduced = ProjectContext(
         project_id=context.project_id,

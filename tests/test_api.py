@@ -6,6 +6,7 @@ from pydantic import SecretStr
 
 from idea2ip.engine import Engine
 from idea2ip.main import create_app
+from idea2ip.models import TargetField
 
 ROOT = "/v1/projects/project-moon-garden"
 
@@ -38,6 +39,69 @@ def test_question_is_neutral(client, payload):
     )
     assert response.status_code == 200
     assert "없다면" in response.json()["question"]
+
+
+@pytest.mark.parametrize("mode,has_sources", [("mock", True), ("mock", False), ("live", False)])
+@pytest.mark.parametrize(
+    "target,expected",
+    [
+        ("work_overview", "작품의 종류와 표현하려는 내용을 설명해 주시겠어요?"),
+        (
+            "ai_usage",
+            "AI 도구를 사용한 작업이 있나요? 있다면 도구 이름과 활용 단계를, "
+            "없다면 없다고 알려주세요.",
+        ),
+        (
+            "human_edit",
+            "작품에서 직접 수정하거나 추가한 부분이 있나요? "
+            "있다면 구체적인 요소와 작업 방법을, 없다면 없다고 알려주세요.",
+        ),
+        (
+            "selection_arrangement",
+            "여러 시안이나 요소 중 직접 선택하거나 배치한 작업이 있나요? "
+            "있다면 그 과정과 기준을, 없다면 없다고 알려주세요.",
+        ),
+        (
+            "creative_intent",
+            "표현하려던 의도가 있나요? 있다면 그 의도와 이를 반영한 결정이나 과정을, "
+            "없다면 없다고 알려주세요.",
+        ),
+    ],
+)
+def test_fallback_questions(settings, payload, mode, has_sources, target, expected):
+    class NoCall:
+        def generate(self, *args, **kwargs):
+            pytest.fail("fallback must not call model")
+
+    settings = settings.model_copy(update={"mode": mode})
+    client = TestClient(create_app(settings, Engine(settings, NoCall())))
+    if not has_sources:
+        payload["sources"] = []
+    response = client.post(ROOT + "/questions", json={"context": payload, "target_field": target})
+    assert response.status_code == 200
+    body = response.json()
+    # Reviewed fixed wording; this does not assess arbitrary model responses.
+    assert body["question"] == expected
+    assert body["source_ids"] == []
+    assert body["target_field"] == target
+    assert body["mode"] == mode
+
+
+def test_unknown_question_target_rejected(client, payload):
+    response = client.post(
+        ROOT + "/questions", json={"context": payload, "target_field": "unknown"}
+    )
+    assert response.status_code == 422
+
+
+def test_empty_brief_uses_all_default_questions(client, payload):
+    from idea2ip.engine import QUESTIONS
+
+    payload["sources"] = []
+    body = client.post(ROOT + "/brief", json=payload).json()
+    assert body["sections"]["gaps_and_guidance"]["statements"][:5] == [
+        QUESTIONS[target] for target in TargetField
+    ]
 
 
 @pytest.mark.parametrize("mutation", ["cross_project", "duplicate", "official", "orphan"])
