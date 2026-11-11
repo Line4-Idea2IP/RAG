@@ -21,7 +21,7 @@ class Stub:
         if schema is NamedAnalysisDraft and isinstance(self.result, AnalysisDraft):
             return NamedAnalysisDraft.model_validate(
                 {
-                    f.target_field.value: f.model_dump(exclude={"target_field"})
+                    f.target_field.value: f.model_dump(exclude={"target_field", "quotes"})
                     for f in self.result.fields
                 }
             )
@@ -55,9 +55,9 @@ def test_valid_user_reported_contributions(settings, context):
     "mutation,code",
     [
         ("unknown", "INVALID_SOURCE_REFERENCE"),
-        ("quote", "INVALID_QUOTE"),
+        ("duplicate", "INVALID_SOURCE_REFERENCE"),
         ("attachment", "INVALID_QUOTE"),
-        ("snippet", "INVALID_QUOTE"),
+        ("wrong_field", "MODEL_FIELD_MISMATCH"),
         ("omit", "MODEL_EVIDENCE_OMITTED"),
     ],
 )
@@ -66,13 +66,12 @@ def test_reject_ungrounded_model_analysis(settings, context, mutation, code):
     field = draft.fields[2]
     if mutation == "unknown":
         field.source_ids = ["nonexistent"]
-    elif mutation == "quote":
-        field.quotes = ["사용자가 전체를 직접 그렸습니다."]
+    elif mutation == "duplicate":
+        field.source_ids *= 2
     elif mutation == "attachment":
         field.source_ids = ["attachment-notes"]
-        field.quotes = [context.sources[3].content]
-    elif mutation == "snippet":
-        field.quotes = ["직접 다시 그렸습니다."]
+    elif mutation == "wrong_field":
+        field.source_ids = [context.sources[0].source_id]
     elif mutation == "omit":
         field.disposition, field.source_ids, field.quotes = "not_provided", [], []
     engine = Engine(settings.model_copy(update={"mode": "live"}), Stub(draft))
@@ -124,3 +123,28 @@ def test_mock_is_conservative_about_negation(settings, context):
     result = Engine(settings).analyze(context)
     assert result.fields[2].status == "UNCLEAR"
     assert Engine(settings).contributions_from(result).contributions == []
+
+
+def test_server_hydrates_complete_original_and_preserves_conflict(settings, context):
+    # A long statement must be returned verbatim, even when a model would select one sentence.
+    original = "첫 문장입니다. 줄바꿈과  두 칸을 보존합니다.\n수정하지 않았다는 상충 진술입니다."
+    context.sources[2].content = original
+    second = context.sources[2].model_copy(
+        update={"source_id": "statement-conflict", "content": "직접 수정했습니다."}
+    )
+    context.sources.append(second)
+    draft = candidate_draft(context)
+    draft.fields[2].disposition = "conflicted"
+    analysis = Engine(settings.model_copy(update={"mode": "live"}), Stub(draft)).analyze(context)
+    field = analysis.fields[2]
+    assert field.status == "CONFLICTED"
+    assert field.source_ids == ["statement-edit", "statement-conflict"]
+    assert field.quotes == [original, second.content]
+
+
+def test_conflict_requires_two_statements(settings, context):
+    draft = candidate_draft(context)
+    draft.fields[2].disposition = "conflicted"
+    with pytest.raises(ServiceError) as error:
+        Engine(settings.model_copy(update={"mode": "live"}), Stub(draft)).analyze(context)
+    assert error.value.code == "MODEL_INVALID_OUTPUT"

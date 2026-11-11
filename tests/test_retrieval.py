@@ -87,8 +87,8 @@ def legal():
     content = "테스트용 공식 지침 본문; 실제 법률 안내가 아닙니다."
     return LegalEdition(
         source_id="law-test",
-        title="테스트",
-        publisher="테스트",
+        title="가상 테스트 지침 — 실제 공식 자료 아님",
+        publisher="가상 테스트 발행기관",
         edition="fixture-v1",
         official_url="https://www.copyright.or.kr/test",
         published_on=date(2026, 1, 1),
@@ -214,3 +214,21 @@ def test_eligible_legal_guidance_is_separate_in_brief(settings, context, tmp_pat
     assert item.source_id in report.sections.gaps_and_guidance.source_ids
     assert item.source_id not in report.sections.human_contribution.source_ids
     assert all(s.source_id != "legal-placeholder-kr-v0" for s in report.sources)
+
+
+def test_brief_preserves_test_edition_metadata(settings, context, tmp_path):
+    import json
+
+    from idea2ip.engine import Engine
+
+    item = legal()
+    item.content = "저작권 등록 신청 창작 테스트 자료. 실제 법률 안내가 아닙니다."
+    item.sha256 = hashlib.sha256(item.content.encode()).hexdigest()
+    path = tmp_path / "test-only-catalog.json"
+    path.write_text(json.dumps([item.model_dump(mode="json")]))
+    report = Engine(
+        settings.model_copy(update={"retrieval": "fixture", "legal_catalog": path})
+    ).brief(context)
+    assert report.legal_editions == [item]
+    saved = next(source for source in report.sources if source.source_id == item.source_id)
+    assert saved == item

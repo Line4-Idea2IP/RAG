@@ -93,16 +93,18 @@ def test_question_chat_receives_target_guidance(settings, context, target, requi
     assert len(calls) == 1
 
 
-@pytest.mark.parametrize("variant", ["missing", "extra", "old_duplicate_array"])
+@pytest.mark.parametrize("variant", ["missing", "extra", "old_duplicate_array", "model_quotes"])
 def test_invalid_analysis_shape_fails_closed(settings, context, variant):
     from idea2ip.models import TargetField
 
-    empty = {"disposition": "not_provided", "source_ids": [], "quotes": []}
+    empty = {"disposition": "not_provided", "source_ids": []}
     result = {target.value: empty.copy() for target in TargetField}
     if variant == "missing":
         del result["creative_intent"]
     elif variant == "extra":
         result["unknown_field"] = empty.copy()
+    elif variant == "model_quotes":
+        result["human_edit"]["quotes"] = ["모델이 원문을 바꾼 인용"]
     else:
         result = {"fields": [{"target_field": "human_edit", **empty} for _ in range(5)]}
 
@@ -137,6 +139,8 @@ def test_analysis_uses_required_named_fields(settings, context, endpoint):
         assert set(schema["properties"]) == names
         assert set(schema["required"]) == names
         assert schema["additionalProperties"] is False
+        selection = schema["$defs"]["FieldSelection"]
+        assert set(selection["properties"]) == {"disposition", "source_ids"}
         result = {}
         for target in TargetField:
             sources = [
@@ -147,7 +151,6 @@ def test_analysis_uses_required_named_fields(settings, context, endpoint):
             result[target.value] = {
                 "disposition": "provided" if sources else "not_provided",
                 "source_ids": [s.source_id for s in sources],
-                "quotes": [s.content for s in sources],
             }
         return httpx.Response(
             200,

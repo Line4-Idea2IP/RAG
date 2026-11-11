@@ -173,14 +173,13 @@ class Engine:
                 NamedAnalysisDraft,
                 "사용자 진술만 분석한다. 다음 5개 이름을 가진 JSON 객체를 반환한다: "
                 "work_overview, ai_usage, human_edit, selection_arrangement, creative_intent. "
-                "각 객체는 disposition, source_ids, quotes만 가진다. fields 배열이나 "
+                "각 객체는 disposition, source_ids만 가진다. fields 배열이나 "
                 "target_field 속성은 반환하지 않는다. 자료가 없는 항목도 반드시 포함하고 "
-                "disposition=not_provided, source_ids=[], quotes=[]로 반환한다. "
+                "disposition=not_provided, source_ids=[]로 반환한다. "
                 "provided는 해당 질문에 구체적으로 답한 경우, unclear는 모호/관련성 부족, "
                 "not_provided는 근거 없음, conflicted는 양립 불가능한 진술이 있는 경우다. "
                 "'직접 수정한 것이 없다'도 답변이지만 창작 기여를 했다는 뜻이 아니다. "
-                "source_ids와 quotes는 같은 순서/개수로 쓴다. "
-                "quote는 content 전체 원문이어야 한다. "
+                "원문을 옮겨 적거나 quotes를 반환하지 않는다. 서버가 검증된 ID에서 원문을 채운다. "
                 "모든 사용된 진술을 인용하고 상충하는 진술을 버리지 않는다. "
                 "target_field가 명시된 진술은 다른 필드로 바꾸지 않는다.",
                 {
@@ -195,15 +194,13 @@ class Engine:
         results = []
         for field in draft.fields:
             self.check_ids(field.source_ids, context)
-            if len(field.source_ids) != len(field.quotes):
-                raise ServiceError("INVALID_SOURCE_REFERENCE", "인용과 출처 개수 불일치")
             if field.disposition == "not_provided" and field.source_ids:
                 raise ServiceError("MODEL_INVALID_OUTPUT", "근거 없음 상태에 인용이 있습니다")
             if field.disposition != "not_provided" and not field.source_ids:
                 raise ServiceError("INVALID_SOURCE_REFERENCE", "답변 분석에 원문 인용이 필요합니다")
-            for sid, quote in zip(field.source_ids, field.quotes):
+            for sid in field.source_ids:
                 source = lookup.get(sid)
-                if source is None or quote != source.content:
+                if source is None:
                     raise ServiceError("INVALID_QUOTE", "사용자 진술 원문에 없는 인용 차단")
                 if source.target_field is not None and source.target_field != field.target_field:
                     raise ServiceError("MODEL_FIELD_MISMATCH", "사용자 진술의 대상 필드 변경 차단")
@@ -215,6 +212,7 @@ class Engine:
             expected = {s.source_id for s in statements if s.target_field == field.target_field}
             if not expected <= set(field.source_ids):
                 raise ServiceError("MODEL_EVIDENCE_OMITTED", "지정 필드의 사용자 진술 누락")
+            field.quotes = [lookup[sid].content for sid in field.source_ids]
             status = {
                 "provided": "USER_REPORTED",
                 "unclear": "UNCLEAR",

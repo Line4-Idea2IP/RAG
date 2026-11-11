@@ -99,18 +99,25 @@ class AnalysisDraft(StrictModel):
     fields: list[FieldCandidate] = Field(min_length=5, max_length=5)
 
 
+class FieldSelection(StrictModel):
+    disposition: Literal["provided", "unclear", "not_provided", "conflicted"]
+    source_ids: list[Id] = Field(max_length=100)
+
+
 class NamedAnalysisDraft(StrictModel):
-    # Fixed required properties prevent enum repetition in a five-element array.
-    work_overview: FieldValue
-    ai_usage: FieldValue
-    human_edit: FieldValue
-    selection_arrangement: FieldValue
-    creative_intent: FieldValue
+    # The model selects evidence; the server supplies verbatim text after validation.
+    work_overview: FieldSelection
+    ai_usage: FieldSelection
+    human_edit: FieldSelection
+    selection_arrangement: FieldSelection
+    creative_intent: FieldSelection
 
     def to_draft(self) -> AnalysisDraft:
         return AnalysisDraft(
             fields=[
-                FieldCandidate(target_field=target, **getattr(self, target.value).model_dump())
+                FieldCandidate(
+                    target_field=target, **getattr(self, target.value).model_dump(), quotes=[]
+                )
                 for target in TargetField
             ]
         )

@@ -188,7 +188,6 @@ def test_observe_prompt_deduplicates_only_observation_output(settings, context, 
                 target.value: {
                     "disposition": "provided" if matches else "not_provided",
                     "source_ids": [s["source_id"] for s in matches],
-                    "quotes": [s["content"] for s in matches],
                 }
                 for target in TargetField
                 for matches in [[s for s in sources if s["target_field"] == target.value]]
@@ -240,13 +239,12 @@ def test_model_cannot_cite_observation_as_user_contribution(settings, image_cont
         data = json.loads(payload["messages"][1]["content"][0]["text"].split("\nDATA_JSON:\n")[1])
         assert data["sources"] == [statement.model_dump(mode="json")]
         result = {
-            target.value: {"disposition": "not_provided", "source_ids": [], "quotes": []}
+            target.value: {"disposition": "not_provided", "source_ids": []}
             for target in TargetField
         }
         result["human_edit"] = {
             "disposition": "provided",
             "source_ids": ["observation-1"],
-            "quotes": [image_context.sources[1].content],
         }
         return completion(result)
 
