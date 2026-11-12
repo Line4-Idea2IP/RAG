@@ -52,16 +52,16 @@ def test_valid_user_reported_contributions(settings, context):
 
 
 @pytest.mark.parametrize(
-    "mutation,code",
+    "mutation,status",
     [
-        ("unknown", "INVALID_SOURCE_REFERENCE"),
-        ("duplicate", "INVALID_SOURCE_REFERENCE"),
-        ("attachment", "INVALID_QUOTE"),
-        ("wrong_field", "MODEL_FIELD_MISMATCH"),
-        ("omit", "MODEL_EVIDENCE_OMITTED"),
+        ("unknown", "UNCLEAR"),
+        ("duplicate", "USER_REPORTED"),
+        ("attachment", "UNCLEAR"),
+        ("wrong_field", "UNCLEAR"),
+        ("omit", "UNCLEAR"),
     ],
 )
-def test_reject_ungrounded_model_analysis(settings, context, mutation, code):
+def test_ungrounded_model_selection_is_repaired_not_trusted(settings, context, mutation, status):
     draft = candidate_draft(context)
     field = draft.fields[2]
     if mutation == "unknown":
@@ -75,9 +75,25 @@ def test_reject_ungrounded_model_analysis(settings, context, mutation, code):
     elif mutation == "omit":
         field.disposition, field.source_ids, field.quotes = "not_provided", [], []
     engine = Engine(settings.model_copy(update={"mode": "live"}), Stub(draft))
-    with pytest.raises(ServiceError) as error:
-        engine.analyze(context)
-    assert error.value.code == code
+    analysis = engine.analyze(context)
+    repaired = analysis.fields[2]
+    # Only the field's own user statement survives, quoted verbatim; nothing invented or foreign.
+    assert repaired.source_ids == ["statement-edit"]
+    assert repaired.quotes == [context.sources[2].content]
+    assert repaired.status == status
+    # A field the model mis-selected is never reported as a contribution.
+    contributions = engine.contributions_from(analysis).contributions
+    assert bool(contributions) == (status == "USER_REPORTED")
+    # Other fields keep their own statements.
+    assert analysis.fields[0].source_ids == ["statement-overview"]
+
+
+def test_not_provided_without_any_statement_stays_missing(settings, context):
+    draft = candidate_draft(context)
+    draft.fields[3].disposition, draft.fields[3].source_ids = "provided", ["nonexistent"]
+    analysis = Engine(settings.model_copy(update={"mode": "live"}), Stub(draft)).analyze(context)
+    assert analysis.fields[3].status == "MISSING"
+    assert analysis.fields[3].source_ids == []
 
 
 def test_question_rejects_forged_source(settings, context):
@@ -142,9 +158,8 @@ def test_server_hydrates_complete_original_and_preserves_conflict(settings, cont
     assert field.quotes == [original, second.content]
 
 
-def test_conflict_requires_two_statements(settings, context):
+def test_conflict_with_one_statement_becomes_unclear(settings, context):
     draft = candidate_draft(context)
     draft.fields[2].disposition = "conflicted"
-    with pytest.raises(ServiceError) as error:
-        Engine(settings.model_copy(update={"mode": "live"}), Stub(draft)).analyze(context)
-    assert error.value.code == "MODEL_INVALID_OUTPUT"
+    analysis = Engine(settings.model_copy(update={"mode": "live"}), Stub(draft)).analyze(context)
+    assert analysis.fields[2].status == "UNCLEAR"
