@@ -1,4 +1,5 @@
 import hashlib
+import logging
 
 from .config import Settings
 from .errors import ServiceError
@@ -26,6 +27,8 @@ from .models import (
     TargetField,
 )
 from .retrieval import search
+
+logger = logging.getLogger(__name__)
 
 QUESTIONS = {
     TargetField.WORK_OVERVIEW: "작품의 종류와 표현하려는 내용을 설명해 주시겠어요?",
@@ -193,25 +196,7 @@ class Engine:
         lookup = {s.source_id: s for s in statements}
         results = []
         for field in draft.fields:
-            self.check_ids(field.source_ids, context)
-            if field.disposition == "not_provided" and field.source_ids:
-                raise ServiceError("MODEL_INVALID_OUTPUT", "근거 없음 상태에 인용이 있습니다")
-            if field.disposition != "not_provided" and not field.source_ids:
-                raise ServiceError("INVALID_SOURCE_REFERENCE", "답변 분석에 원문 인용이 필요합니다")
-            for sid in field.source_ids:
-                source = lookup.get(sid)
-                if source is None:
-                    raise ServiceError("INVALID_QUOTE", "사용자 진술 원문에 없는 인용 차단")
-                if source.target_field is not None and source.target_field != field.target_field:
-                    raise ServiceError("MODEL_FIELD_MISMATCH", "사용자 진술의 대상 필드 변경 차단")
-            if field.disposition == "conflicted" and len(field.source_ids) < 2:
-                raise ServiceError(
-                    "MODEL_INVALID_OUTPUT", "상충 분석에는 두 개 이상의 진술이 필요합니다"
-                )
-            # Explicitly mapped statements cannot disappear from their field's analysis.
-            expected = {s.source_id for s in statements if s.target_field == field.target_field}
-            if not expected <= set(field.source_ids):
-                raise ServiceError("MODEL_EVIDENCE_OMITTED", "지정 필드의 사용자 진술 누락")
+            self.normalize(field, statements, lookup)
             field.quotes = [lookup[sid].content for sid in field.source_ids]
             status = {
                 "provided": "USER_REPORTED",
@@ -234,6 +219,52 @@ class Engine:
             mode=self.settings.mode,
             fields=results,
         )
+
+    @staticmethod
+    def normalize(field, statements, lookup) -> None:
+        """Repairs a model's evidence selection for one field instead of failing the analysis.
+
+        With temperature 0 a rejected selection fails identically on every retry, so a strict
+        check blocked contributions and briefs for good. Only the user's own statements remain,
+        each at most once and never moved away from an explicitly mapped field; explicitly mapped
+        statements are always included. Whenever the selection had to change, the field drops to
+        "unclear" so no answer is reported as provided without the model judging that evidence.
+        """
+        kept, invalid = [], 0
+        for sid in field.source_ids:
+            source = lookup.get(sid)
+            if sid in kept:
+                continue
+            if source is None or (
+                source.target_field is not None and source.target_field != field.target_field
+            ):
+                invalid += 1
+                continue
+            kept.append(sid)
+        omitted = [
+            s.source_id
+            for s in statements
+            if s.target_field == field.target_field and s.source_id not in kept
+        ]
+        field.source_ids = kept + omitted
+        disposition = field.disposition
+        if not field.source_ids:
+            disposition = "not_provided"
+        elif disposition == "not_provided" or invalid or omitted:
+            disposition = "unclear"
+        elif disposition == "conflicted" and len(field.source_ids) < 2:
+            disposition = "unclear"
+        if disposition != field.disposition or invalid or omitted:
+            # Codes and counts only; statements are user data and stay out of logs.
+            logger.warning(
+                "analysis normalized field=%s from=%s to=%s dropped=%d added=%d",
+                field.target_field.value,
+                field.disposition,
+                disposition,
+                invalid,
+                len(omitted),
+            )
+        field.disposition = disposition
 
     def analyze(self, context: ProjectContext) -> AnalysisResponse:
         return self.analyze_prepared(

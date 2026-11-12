@@ -256,5 +256,8 @@ def test_model_cannot_cite_observation_as_user_contribution(settings, image_cont
         f"/v1/projects/{image_context.project_id}/contributions",
         json=image_context.model_dump(mode="json"),
     )
-    assert response.status_code == 502
-    assert response.json()["error"]["code"] == "INVALID_QUOTE"
+    # The observation is dropped, never quoted as the user's work; the field falls back to the
+    # user's own statement as unclear, so no contribution is reported.
+    assert response.status_code == 200
+    assert response.json()["contributions"] == []
+    assert "human_edit" in response.json()["unresolved_fields"]

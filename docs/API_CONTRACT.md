@@ -77,7 +77,7 @@ Brief의 `sections`는 다음 **5개 키**만 갖습니다.
 |---|---|---|
 | 401 | UNAUTHORIZED | 내부 인증 설정 확인, 자동 재시도 안 함 |
 | 422 | INVALID_REQUEST, PROJECT_MISMATCH, SOURCE_CONFLICT | 스냅샷/입력/색인 수정 |
-| 502 | MODEL_INVALID_OUTPUT, INVALID_QUOTE, INVALID_SOURCE_REFERENCE, MODEL_EVIDENCE_OMITTED | 결과 저장/확정하지 말고 확인 필요로 처리 |
+| 502 | MODEL_INVALID_OUTPUT, INVALID_SOURCE_REFERENCE, MODEL_FIELD_MISMATCH | 결과 저장/확정하지 말고 확인 필요로 처리 |
 | 503 | MODEL_UNAVAILABLE, MODEL_HTTP_ERROR, EMBEDDING_UNAVAILABLE, VECTOR_DB_UNCONFIGURED, VECTOR_DB_UNAVAILABLE, SCOPE_VIOLATION | 일시 장애 구분 후 제한적 재시도, mock으로 자동 대체 금지 |
 | 504 | MODEL_TIMEOUT | 작업을 미완료로 표시, 사용자 재시도 허용 |
 
@@ -92,3 +92,9 @@ Brief의 `sections`는 다음 **5개 키**만 갖습니다.
 검증한 다음 해당 ID의 전체 `content`를 같은 순서로 `quotes`에 넣습니다.
 공개 분석 응답의 `quotes`와 Brief 응답 구조는 유지합니다. 모델이 부분 문장만 옮겨 적거나
 원문을 바꾸는 데서 발생하는 인용 불일치를 피하며, 출처 검증을 생략하지 않습니다.
+
+모델이 고른 근거가 계약과 맞지 않으면 분석 전체를 실패시키지 않고 해당 필드만 보정합니다.
+없는 ID, 사용자 진술이 아닌 자료, 다른 필드로 지정된 진술, 중복 ID는 제외하고, 그 필드로 지정된 진술은
+항상 포함합니다. 선택이 바뀐 필드는 `unclear`(UNCLEAR)로 낮추며, 상충은 진술이 두 개 이상일 때만 유지합니다.
+temperature 0에서는 같은 입력이 같은 결과를 내므로 엄격한 실패가 재시도로 해결되지 않았기 때문입니다.
+보정 내역은 필드명과 개수만 경고 로그로 남깁니다.
